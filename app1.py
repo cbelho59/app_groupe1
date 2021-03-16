@@ -70,7 +70,7 @@ def fourierTot(signal):
 def decode(signal):
     str = ""
     # print(len(signal)/2500)
-    for i in range(int(len(signal)/2500)):
+    for i in range(int(len(signal)/2500)+1):
         sig = signal[2500*i:2500*i+2000]
         # div = 4
         # si = [sig[i*div] for i in range(int(len(sig)/div))]
