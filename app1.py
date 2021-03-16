@@ -8,7 +8,8 @@ import sounddevice as sd
 import numpy as np
 import matplotlib.pyplot as plt
 
-s, Fe = sf.read(r'mess_ssespace.wav')  # s : data Fe : frequence d'echantillonage
+#il faut à chaque 
+s, Fe = sf.read(r'symboleU2.wav')  # s : data Fe : frequence d'echantillonage
 print(Fe)
 # sd.play(s,Fe)
 
@@ -57,13 +58,26 @@ def findIndexMaxMieux(TF,duree):
     return indicemax/duree
 
 def fourierTot(signal):
-    a = fourier(signal)
+    # a = fourier(signal)
+    a = np.fft.fft(signal)
+    b = np.angle(a)
+    a = np.abs(a)
+    # b = np.angle(a)
+    print(b)
     Fe = 8000
     lenLettre = 2000
     duree = lenLettre/Fe
     fmax = findIndexMaxMieux(a,duree)
     tab = [i/duree for i in range(len(a))]
+    plt.subplot((211))
     plt.plot(tab, a)
+    # plt.show()
+    plt.grid()
+    plt.xlim(480, 580)
+    plt.subplot((212))
+    plt.plot(tab, b)
+    plt.grid()
+    plt.xlim(480, 580)
     plt.show()
     return fmax
 
