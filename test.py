@@ -86,7 +86,7 @@ def decode(s, fe):
         pic = np.argmax(abs(fft_signal)[borne_min:borne_max])  # indice de la valeur du pic
         freq_lettre = int(borne_min + pic)  # fréquence du pic
 
-        amplitude_lettres.append(abs(fft_signal[freq_lettre]))  # on stocke l'amplitude à la fréquence de lettre
+        amplitude_lettres.append(10)  # on stocke l'amplitude à la fréquence de lettre
         difference = abs(amplitude_lettres[0] - amplitude_lettres[len(
             amplitude_lettres) - 1])  # on compare l'amplitude de chaque symbole avec celle de le premier symbole pour déduire si c'est un espace ou un symbole
 
