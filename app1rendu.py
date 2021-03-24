@@ -87,17 +87,9 @@ def decode(fichier):
                 else: #si ce n'est pas un espace
                     lettre = alphabet[round(flettre - fmin)]  # lettre de l'alphabet qui correspond à cette fréquence
                     str += lettre
-                tab = [i/d for i in range(len(TF))]
-                plt.plot(tab, TF)
-                plt.xlim(490, 530)
         else: #si c'est une lettre normale envoyée, sans bruit particulier
             lettre = alphabet[round(flettre - fmin)] #lettre de l'alphabet qui correspond à cette fréquence
             str += lettre
-        if(i>25):
-            print(alphabet[round(flettre-fmin)])
-            print(flettre)
-            plt.show()
-        plt.close()
         del(TF) #la mémoire peut être un pb, donc on efface cette variable
     return str
 
