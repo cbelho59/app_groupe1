@@ -1,105 +1,108 @@
 from numpy.fft import fft
 import numpy as np
-import cmath
 import math
-from matplotlib.pyplot import *
-import soundfile as sf
-from scipy.io import wavfile as wf
-import sounddevice as sd
-import numpy as np
 import matplotlib.pyplot as plt
+import sounddevice as sd
+import soundfile as sf
 
-#il faut à chaque 
-# s, Fe = sf.read(r'mess_ssespace.wav')  # s : data Fe : frequence d'echantillonage
-Fe,s = wf.read(r'mess_ssespace.wav')  # s : data Fe : frequence d'echantillonage
+def decode(fichier):
+    def findIndexMaxMieux(TF, duree): #cherche la fréquence maximale entre fmin et fmax
+        maximum = 0
+        indicemax = 0
+        for i in range(1, int(len(TF) / 2)):
+            if (i / duree >= fmin and i / duree <= fmax): #si l'indice correspond à une fréquence qui nous intéresse
+                if (TF[i] > maximum):
+                    maximum = TF[i]
+                    indicemax = i
+        return indicemax / duree, maximum #on renvoie aussi la valeur du maximum pour savoir si il n'y a que du bruit (donc un espace) ou du signal (donc une lettre)
 
-step = 1/Fe
-signal = np.array(s)
-print(signal)
-fmin = 501
-fmax = 526
-
-alphabet = [chr(i) for i in range(65,65+26)]
-
-# def fourier(signal):
-#     N = len(signal)
-#     FOURIER = [0]*N
-#     for p in range(N):
-#         fourierp = 0
-#         for n in range(N):
-#             fourierp += (signal[n]*cmath.exp(-2*1j*math.pi*n*p/N))
-#         # print(fourierp)
-#         fourierp = N * math.sqrt(fourierp.real**2+fourierp.imag**2)
-#         # print(fourierp)
-#         FOURIER[p] = fourierp
-#     return FOURIER
-
-# def findIndexMax(TF):
-#     max = TF[0]
-#     indicemax = 0
-#     for i in range(1,int(len(TF)/2)):
-#         if(TF[i]>max):
-#             max = TF[i]
-#             indicemax = i
-#     return indicemax
-
-def findIndexMaxMieux(TF,duree):
-    max = 0
-    indicemax = 0
-    for i in range(1, int(len(TF) / 2)):
-        if(i/duree>=fmin and i/duree<=fmax):
-            if (TF[i] > max):
-                max = TF[i]
+    def findIndexMaxTout(TF): #cherche la fréquence maximale sur l'ensemble de la TF
+        maximum = 0
+        indicemax = 0
+        for i in range(0, int(len(TF) / 2)):
+            if (TF[i] > maximum):
+                maximum = TF[i]
                 indicemax = i
-    return indicemax/duree
+        return indicemax, maximum #on renvoie aussi la valeur du maximum pour savoir si il n'y a que du bruit (donc un espace) ou du signal (donc une lettre)
 
-def fourierTot(signal):
-    # a = fourier(signal)
-    precision = 2
-    N_fft = int(len(signal) * 10 ** precision)  # on utilise la méthode de zéro-padding pour augmenter la précision
-    print(N_fft)
-    print(signal)
-    a = np.fft.fft(signal,N_fft)
-    print(a)
-    a = np.abs(a)
-    # Fe = 8000
+    def fourier(signal): #calule la TF du signal
+        lenpadding = len(signal)*100 #valeur arbirtraire qui est un bon compromis entre temps de calcul et précision
+        TF = np.fft.fft(signal, lenpadding) # on utilise la méthode de zéro-padding pour augmenter la précision
+        TF = np.abs(TF) #dans notre méthode, on s'intéresse seulement au module de la fonction
 
-    duree_avec_padding = N_fft/Fe
-    fmax = findIndexMaxMieux(a,duree_avec_padding)
-    tab = [i/duree_avec_padding for i in range(len(a))]
-    # plt.subplot((211))
-    # plt.plot(tab,a)
-    # # plt.show()
-    # plt.grid()
-    # plt.xlim(480, 580)
-    # plt.subplot((212))
-    # plt.plot(tab, b)
-    # plt.grid()
-    # plt.xlim(480, 580)
-    # plt.show()
-    print(fmax)
-    return fmax
+        duree_avec_padding = lenpadding / Fe #durée du signal incluant le zero-padding
+        fmax, amplitudeFmax = findIndexMaxMieux(TF, duree_avec_padding) #on cherche la fréquence max et l'amplitude max entre fmin et fmax
+        return fmax, amplitudeFmax,TF,duree_avec_padding
 
-def decode(signal):
-    print(signal)
-    # print(len(signal))
-    str = ""
-    # print(len(signal)/2500)
-    for i in range(math.floor(len(signal)/2500)):
-        debut = 2500*i
-        fin = debut + 2000
-        # print(debut,fin)
-        sig = signal[debut:fin]
-        print(len(sig))
-        # sig2 = sig*np.hanning(len(sig))
-        # print('sig2')
-        # print(sig2)
-        # print('yo')
-        flettre = fourierTot(sig)
-        # print('flettre',flettre)
-        lettre = alphabet[round(flettre-501)]
-        str += lettre
-        print(lettre)
+    fmin = 501
+    fmax = 526
+    alphabet = [chr(i) for i in range(65, 65 + 26)]
+    lenchar = 2000
+    lenentre = 500
+    str = "" #chaine de caractère pour le retour
+    s, Fe = sf.read(fichier) #ouverture du fichier
+    signal = np.array(s)
+
+    if (len(signal) == lenchar):#on utilise une porte si le signal n'est composé que d'un seul caractère
+        signal = signal * np.hanning(len(signal))
+
+    amplitudes = [] #amplitudes du pic de la TF, pour savoir si c'est du bruit (donc un espace) ou du signal (donc une lettre)
+
+    for i in range(math.ceil(len(signal)/(lenchar+lenentre))):
+        debut = (lenchar+lenentre)*i    #debut du ieme caractere
+        fin = debut + lenchar   #fin du ieme caractere
+        flettre, amplitudeFlettre, TF, d = fourier(signal[debut:fin]) #calcul de la TF
+        amplitudeRelativeEspace = 0.75
+        amplitudes.append(amplitudeFlettre)
+        amplitudeRelative = amplitudes[-1]/amplitudes[0] #calcul de l'amplitude relative avec le premier caractère, qui ne peut pas etre un espace
+        if(amplitudeRelative<amplitudeRelativeEspace): #si l'amplitude relative est inférieure à amplitudeRelativeEspae, alors on considere que c'est un espae
+            str += " "
+        elif (amplitudeRelative>2):
+            #si l'amplitude relative est très importante, c'est qu'il y a un énorme pic qui cache la vrai fréquence envoyée
+                j, max = findIndexMaxTout(TF)
+                if(j/d<513): #si la fréquence du bruit est inférieure à la fréquence moyenne d'une lettre
+                    #On va diviser la partie droite du pic de bruit par la partie gauche pour essayer de le retirer
+                    for k in range(int(100*d)):
+                        if(TF[j-k]>3):
+                            TF[k+j] = TF[k+j]/TF[j-k]
+                        else:
+                            TF[k+j] = 0
+                    for k in range(int(100*d)):
+                        TF[j-k] = 0
+
+                else: #si la fréquence du bruit est supérieure à la fréquence moyenne d'une lettre
+                    # On va diviser la partie gauche du pic de bruit par la partie droite pour essayer de le retirer
+                    for k in range(int(100*d)):
+                        if(TF[j+k]>3):
+                            TF[j-k] = TF[j-k]/TF[j+k]
+                        else:
+                            TF[j-k] = 0
+                    for k in range(int(100*d)):
+                        TF[j+k] = 0
+
+                flettre, max = findIndexMaxMieux(TF, d) #On recalcule la fréquence max avec le bruit retiré
+
+                if (max < 3):  # si la fréquence maximale est inférieure à 3, c'est probablement un espace
+                    str += " "
+                else: #si ce n'est pas un espace
+                    lettre = alphabet[round(flettre - fmin)]  # lettre de l'alphabet qui correspond à cette fréquence
+                    str += lettre
+                tab = [i/d for i in range(len(TF))]
+                plt.plot(tab, TF)
+                plt.xlim(490, 530)
+        else: #si c'est une lettre normale envoyée, sans bruit particulier
+            lettre = alphabet[round(flettre - fmin)] #lettre de l'alphabet qui correspond à cette fréquence
+            str += lettre
+        if(i>25):
+            print(alphabet[round(flettre-fmin)])
+            print(flettre)
+            plt.show()
+        plt.close()
+        del(TF) #la mémoire peut être un pb, donc on efface cette variable
     return str
 
-print(decode(signal))
+
+FILES = ["symboleA.wav","symboleA2.wav","symboleU.wav","symboleU2.wav","mess_ssespace.wav","mess.wav","mess_difficile.wav"]
+for file in FILES:
+    print(decode(file))
+# print(decode('mess_difficile.wav'))
